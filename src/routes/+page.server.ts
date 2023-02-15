@@ -1,6 +1,7 @@
-import { saveImages } from '$lib/firebase';
+import { saveImages } from '$lib/server/firebase';
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
+import { getImageFromFirebaseStorage } from '$lib/server/firebase';
 
 export const load = (({ params }) => {
 	return {
