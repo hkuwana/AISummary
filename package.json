@@ -38,6 +38,7 @@
 	"type": "module",
 	"dependencies": {
 		"@tensorflow/tfjs": "^4.2.0",
+		"@tensorflow/tfjs-node": "^4.2.0",
 		"daisyui": "^2.50.1",
 		"dotenv": "^16.0.3",
 		"firebase": "^9.17.1",

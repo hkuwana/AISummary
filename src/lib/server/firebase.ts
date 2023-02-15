@@ -16,34 +16,39 @@ import {
 } from '$env/static/private';
 import { dev } from '$app/environment';
 import { initializeApp } from 'firebase/app';
+import { getAnalytics } from 'firebase/analytics';
+
 import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
+import { getStorage, ref } from 'firebase/storage';
+
 import 'firebase/storage';
 
-// TODO: Replace the following with your app's Firebase project configuration
 // If the app is in dev mode use the firebase dev config
 const firebaseConfig = dev
 	? {
 			apiKey: FIREBASE_DEV_API_KEY,
 			authDomain: FIREBASE_DEV_AUTH_DOMAIN,
-			databaseURL: FIREBASE_DEV_AUTH_DOMAIN,
 			projectId: FIREBASE_DEV_PROJECT_ID,
 			storageBucket: FIREBASE_DEV_STORAGE_BUCKET,
 			messagingSenderId: FIREBASE_DEV_MESSAGING_SENDER_ID,
 			appId: FIREBASE_DEV_APP_ID,
-			measurementId: FIREBASE_PROD_MEASUREMENT_ID
+			measurementId: FIREBASE_DEV_MEASUREMENT_ID
 	  }
 	: {
 			apiKey: FIREBASE_PROD_API_KEY,
 			authDomain: FIREBASE_PROD_AUTH_DOMAIN,
-			databaseURL: FIREBASE_PROD_AUTH_DOMAIN,
 			projectId: FIREBASE_PROD_PROJECT_ID,
 			storageBucket: FIREBASE_PROD_STORAGE_BUCKET,
 			messagingSenderId: FIREBASE_PROD_MESSAGING_SENDER_ID,
 			appId: FIREBASE_PROD_APP_ID,
-			measurementId: FIREBASE_DEV_MEASUREMENT_ID
+			measurementId: FIREBASE_PROD_MEASUREMENT_ID
 	  };
 
 const app = initializeApp(firebaseConfig);
+// // Checks if analytics is supported with cookies enabled
+// if  analytics.isSupported() {
+// 	const analytics = getAnalytics(app);
+// }
 const db = getFirestore(app);
 
 export async function saveImages() {
@@ -56,8 +61,14 @@ export async function saveImages() {
  */
 export async function getImageFromFirebaseStorage(imageName: string) {
 	try {
-		const storageRef = app.storage().ref();
-		const imageRef = storageRef.child(imageName);
+		// Create a root reference
+		const storage = getStorage();
+		// Create a reference to 'mountains.jpg'
+		const mountainsRef = ref(storage, 'mountains.jpg');
+
+		// Create a reference to 'images/mountains.jpg'
+		const mountainImagesRef = ref(storage, 'images/mountains.jpg');
+
 		const imageURL = await imageRef.getDownloadURL();
 		return imageURL;
 	} catch (error) {
