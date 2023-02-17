@@ -3,10 +3,8 @@ import { error } from '@sveltejs/kit';
 import path from 'path';
 import type { Actions, PageServerLoad } from './$types';
 
-import * as tf from '@tensorflow/tfjs';
-import * as tfNode from '@tensorflow/tfjs-node';
+
 import { readFile, readdir } from 'fs';
-import modelJson from '$lib/style_transfer_tfjs/model.json';
 // import { getImageFromFirebaseStorage } from '$lib/server/firebase';
 
 let model;
@@ -21,16 +19,19 @@ export const actions = {
 	match: async ({ request, cookies, url }) => {
 		// Gets the image from the input
 		const data = await request.formData();
-		const userImageFile = data.get('imageFile') as File;
-		if (!userImageFile) {
-			await imageFilePathToFile('src/lib/images/Hiro_face.jpg');
+		let userImageFile = data.get('imageFile') as File;
+		// Uploads Hiro's face if the size of File is 0 or undefined
+		console.log(userImageFile.size);
+		if (userImageFile.size === 0 || userImageFile == undefined) {
+			console.log('userImageFile is not uploaded');
+			userImageFile = await imageFilePathToFile('src/lib/images/Hiro_face.jpg');
 		}
+		console.log('user image file is:', userImageFile);
 
 		const artistFilePath = (data.get('artistPath') as string).slice(1);
 		const fileName = path.basename(artistFilePath);
 		console.log('fileName: ');
 		console.log(fileName);
-		console.log(userImageFile);
 
 		if (!pathExists(path.dirname(artistFilePath))) {
 			console.log('Path does not exist');
@@ -39,8 +40,8 @@ export const actions = {
 				status: 500
 			};
 		}
-
 		artistFile = await imageFilePathToFile(artistFilePath);
+
 		console.log(artistFile);
 		const userImage8Int = await imageFileToUint8Array(userImageFile);
 		const artistImage8Int = await imageFileToUint8Array(artistFile);
@@ -49,25 +50,18 @@ export const actions = {
 		console.log(userImage8Int);
 		console.log('artistImage8Int: ');
 		console.log(artistImage8Int);
-		// Load the model
+		// Converting uint8array as it's not a plain old javascript object (POJO)
+		const userImageStr = uint8ArrayToString(userImage8Int);
+		const artistImageStr = uint8ArrayToString(artistImage8Int);
 
-		// Load the style transfer model from TF Hub
-		console.log(modelJson);
-		const handler = new JSONHandler(modelJson);
-		const styleTransferModel = await tf.loadGraphModel(handler);
-		console.log('styleTransferModel: ');
-		console.log(styleTransferModel);
-		const styledImage = await applyArtStyle(userImage8Int, artistImage8Int);
-		console.log('styledImage: ');
-		console.log(styledImage);
 		return {
 			type: 'success',
-			status: 200
+			status: 200,
+			dataUserImageStr: userImageStr,
+			dataAristImageStr: artistImageStr
 		};
 	}
 } satisfies Actions;
-
-
 
 /**
  * Checks if given a path, the path exists
@@ -116,35 +110,7 @@ async function imageFileToUint8Array(imageFile: File): Promise<Uint8Array> {
 	return new Uint8Array(buffer);
 }
 
-/**
- * Utilizes a tensorflow model to stylize an image based on the artist of choice
- * @param {Uint8Array} contentImage the path to the image to be stylized
- * @param {Uint8Array} styleImage the path to the image to be used as the style
- * @returns {Promise<tf.Tensor3D>} the stylized image
- */
-async function applyArtStyle(
-	contentImage: Uint8Array,
-	styleImage: Uint8Array
-): Promise<tf.Tensor3D> {
-	// Load the content and style images as TensorFlow tensors
-	const tfContentImage = tfNode.node.decodeImage(contentImage);
-	const tfStyleImage = tfNode.node.decodeImage(styleImage);
-
-	// Load the style transfer model from TF Hub
-	const styleTransferModel = await tf.loadGraphModel(models);
-
-	// Preprocess the images
-	const contentImageResized = tf.image.resizeBilinear(contentImage, [256, 256]);
-	const styleImageResized = tf.image.resizeBilinear(styleImage, [256, 256]);
-	const contentImageNormalized = contentImageResized.toFloat().div(tf.scalar(255));
-	const styleImageNormalized = styleImageResized.toFloat().div(tf.scalar(255));
-
-	// Run the style transfer operation
-	const stylizedImage = styleTransferModel.execute({
-		'content_image:0': contentImageNormalized,
-		'style_image:0': styleImageNormalized
-	}) as tf.Tensor3D;
-
-	console.log(styleImage);
-	return stylizedImage;
+function uint8ArrayToString(array: Uint8Array): string {
+	const decoder = new TextDecoder('utf-8');
+	return decoder.decode(array);
 }
